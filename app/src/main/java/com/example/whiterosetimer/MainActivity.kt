@@ -48,7 +48,10 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener  {
         if (number in 1..20) {
             return numbers[number].toString()
         } else if (number in 21..59) {
-            return numbers[number - number % 10] + " " + numbers[number % 10]
+            if (number % 10 == 0)
+                return numbers[number].toString()
+            else
+                return numbers[number - number % 10] + " " + numbers[number % 10]
         } else {
             return "error"
         }
@@ -108,7 +111,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener  {
         val checkboxS_state = findViewById<RadioButton>(R.id.radioButtonSpecial).isChecked
         if (checkboxS_state)
         {
-            val time = number_to_text(hour) + " " + number_to_text(minute)
+            val time = number_to_text(minute) + " " + number_to_text(hour)
             speak(time)
             return
         }
