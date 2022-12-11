@@ -65,6 +65,10 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener  {
         val checkbox1_state = findViewById<RadioButton>(R.id.radioButton1).isChecked
         val checkbox2_state = findViewById<RadioButton>(R.id.radioButton2).isChecked
         val checkbox3_state = findViewById<RadioButton>(R.id.radioButton3).isChecked
+        val checkboxS_state = findViewById<RadioButton>(R.id.radioButtonSpecial).isChecked
+
+        if (checkboxS_state)
+            return true;
 
         if (checkbox1_state) {
             return when (minute) {
@@ -90,7 +94,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener  {
         return false
     }
 
-    private  fun time_to_speak_minute(hour : Int, minute : Int) : Boolean
+    private fun time_to_speak_minute(hour : Int, minute : Int) : Boolean
     {
         return !time_to_speak_hour(hour, minute)
     }
@@ -100,6 +104,14 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener  {
         val calendar = Calendar.getInstance()
         val hour = calendar.get(Calendar.HOUR_OF_DAY)
         val minute = calendar.get(Calendar.MINUTE)
+
+        val checkboxS_state = findViewById<RadioButton>(R.id.radioButtonSpecial).isChecked
+        if (checkboxS_state)
+        {
+            val time = number_to_text(hour) + " " + number_to_text(minute)
+            speak(time)
+            return
+        }
 
         if (time_to_speak_minute(hour, minute))
         {
