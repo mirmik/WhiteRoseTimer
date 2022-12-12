@@ -68,7 +68,7 @@ class MainService : Service() , TextToSpeech.OnInitListener
     }
     
     fun number_to_text(number: Int): String {
-        if (number in 1..20) {
+        if (number in 0..20) {
             return numbers[number].toString()
         } else if (number in 21..59) {
             if (number % 10 == 0)
