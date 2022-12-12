@@ -47,24 +47,26 @@ class MainService : Service() , TextToSpeech.OnInitListener
         Log.v("MyActivity", "onCreate")
         super.onCreate()
         tts = TextToSpeech(this, this)
+        start_oneshoot_timer()
+    }
 
+    fun start_oneshoot_timer() 
+    {
         val calendar = Calendar.getInstance()
         val second = calendar.get(Calendar.SECOND)
         val millis = calendar.get(Calendar.MILLISECOND)
 
-        // count of milliseconds to the next second
-        val millis_to_next_second = 1000 - millis
-        Log.v("MyActivity", millis_to_next_second.toString())
-
         // count of milliseconds to the next minute
         val millis_to_next_minute = 60000 - second * 1000 - millis
+        Log.v("WhiteRoseTimer", "Start oneshoot timer for $millis_to_next_minute")
 
         timer = Timer()
         timer.schedule(object : TimerTask() {
             override fun run() {
                 speak_time()
+                start_oneshoot_timer()
             }
-        }, millis_to_next_minute.toLong(), 60000)
+        }, millis_to_next_minute.toLong())
     }
     
     fun number_to_text(number: Int): String {
@@ -178,7 +180,7 @@ class MainService : Service() , TextToSpeech.OnInitListener
 
     override fun onStartCommand(intent:Intent , flags : Int, startId : Int) : Int {
         Log.v("MyActivity", "onStartCommand")
-        return super.onStartCommand(intent, flags, startId)
+        return START_STICKY
     }
 
     override fun onDestroy() {
