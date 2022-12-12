@@ -7,6 +7,11 @@ import android.os.IBinder
 import android.speech.tts.TextToSpeech
 import android.util.Log
 import java.util.*
+import android.app.PendingIntent
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.content.Context
 
 
 class MainService : Service() , TextToSpeech.OnInitListener
@@ -41,7 +46,7 @@ class MainService : Service() , TextToSpeech.OnInitListener
         50 to "fifty")
 
     private lateinit var tts : TextToSpeech
-    private lateinit var timer : Timer
+    private val timer : Timer = Timer()
 
     override fun onCreate() {
         Log.v("MyActivity", "onCreate")
@@ -53,14 +58,15 @@ class MainService : Service() , TextToSpeech.OnInitListener
     fun start_oneshoot_timer() 
     {
         val calendar = Calendar.getInstance()
+        val hour = calendar.get(Calendar.HOUR_OF_DAY)
+        val minute = calendar.get(Calendar.MINUTE)
         val second = calendar.get(Calendar.SECOND)
         val millis = calendar.get(Calendar.MILLISECOND)
 
         // count of milliseconds to the next minute
         val millis_to_next_minute = 60000 - second * 1000 - millis
-        Log.v("WhiteRoseTimer", "Start oneshoot timer for $millis_to_next_minute")
+        Log.v("WhiteRoseTimer", "[$hour:$minute:$second] Start oneshoot timer for $millis_to_next_minute")
 
-        timer = Timer()
         timer.schedule(object : TimerTask() {
             override fun run() {
                 speak_time()
@@ -180,6 +186,32 @@ class MainService : Service() , TextToSpeech.OnInitListener
 
     override fun onStartCommand(intent:Intent , flags : Int, startId : Int) : Int {
         Log.v("MyActivity", "onStartCommand")
+
+        val CHANNEL_ID = "10043"
+
+        val notificationManager : NotificationManager =
+            getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+        val channel : NotificationChannel = NotificationChannel(CHANNEL_ID, "My channel", NotificationManager.IMPORTANCE_HIGH)
+        notificationManager.createNotificationChannel(channel)
+
+        val pendingIntent: PendingIntent =
+            Intent(this, MainService::class.java).let { notificationIntent ->
+                PendingIntent.getActivity(this, 0, notificationIntent,
+                    PendingIntent.FLAG_IMMUTABLE)
+            }
+
+        val notification: Notification = Notification.Builder(this, CHANNEL_ID)
+            .setContentTitle("notification_title")
+            .setContentText("content_text")
+            //.setSmallIcon(R.drawable.icon)
+            .setContentIntent(pendingIntent)
+            .setTicker("ticker_text")
+            .build()
+
+// Notification ID cannot be 0.
+        startForeground(10042, notification)
+
         return START_STICKY
     }
 

@@ -21,7 +21,7 @@ class MainActivity : AppCompatActivity() {
 
         // start service
         val intent = Intent(this, MainService::class.java)
-        startService(intent)
+        startForegroundService(intent)
 
         val calendar = Calendar.getInstance()
         val second = calendar.get(Calendar.SECOND)
@@ -30,9 +30,6 @@ class MainActivity : AppCompatActivity() {
         // count of milliseconds to the next second
         val millis_to_next_second = 1000 - millis
         Log.v("MyActivity", millis_to_next_second.toString())
-
-        // count of milliseconds to the next minute
-        val millis_to_next_minute = 60000 - second * 1000 - millis
         
         timer2 = Timer()
         timer2.schedule(object : TimerTask() {
