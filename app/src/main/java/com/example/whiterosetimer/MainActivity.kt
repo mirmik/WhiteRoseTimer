@@ -6,6 +6,8 @@ import android.content.Intent
 import android.content.ServiceConnection
 import android.os.Bundle
 import android.os.IBinder
+import android.text.method.MovementMethod
+import android.text.method.ScrollingMovementMethod
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.example.whiterosetimer.MainService
@@ -68,6 +70,8 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         supportActionBar?.hide()
+        val label = findViewById<TextView>(R.id.locallog)
+        label.movementMethod = ScrollingMovementMethod()
 
         // start service
         val intent = Intent(this, MainService::class.java)
