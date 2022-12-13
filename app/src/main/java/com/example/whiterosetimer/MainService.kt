@@ -1,22 +1,23 @@
 package com.example.whiterosetimer
 
-import android.app.Service
+import android.app.*
+import android.content.Context
 import android.content.Intent
 import android.os.Binder
 import android.os.IBinder
 import android.speech.tts.TextToSpeech
 import android.util.Log
 import java.util.*
-import android.app.PendingIntent
-import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.content.Context
+import java.util.concurrent.locks.ReentrantLock
+
+// syncronious queue
+import java.util.concurrent.ConcurrentLinkedQueue
 
 
 class MainService : Service() , TextToSpeech.OnInitListener
 {
     var mode : Int = 0
+    public     var logqueue = ConcurrentLinkedQueue<String>()
 
     // map of numbers to words
     private val numbers: Map <Int, String> = hashMapOf(
@@ -48,14 +49,32 @@ class MainService : Service() , TextToSpeech.OnInitListener
     private lateinit var tts : TextToSpeech
     private val timer : Timer = Timer()
 
-    override fun onCreate() {
-        Log.v("MyActivity", "onCreate")
-        super.onCreate()
-        tts = TextToSpeech(this, this)
-        start_oneshoot_timer()
+    fun get_queue() : ConcurrentLinkedQueue<String>
+    {
+        return logqueue
     }
 
-    fun start_oneshoot_timer() 
+    override fun onCreate() {
+        Log.v("WhiteRoseTimer", "onCreate")
+        super.onCreate()
+        tts = TextToSpeech(this, this)
+        //start_oneshoot_timer()
+        val thread = Thread { thread_func() }
+        thread.start()
+    }
+
+    fun log_time(ms : Int, hour:Int, minute:Int, second:Int)
+    {
+        val msg = "[$hour:$minute:$second] Millis to next minute: $ms"
+        logqueue.add(msg)
+        Log.v(
+            "WhiteRoseTimer",
+            msg
+        )
+    
+    }
+
+    fun time_to_next_minute() : Long
     {
         val calendar = Calendar.getInstance()
         val hour = calendar.get(Calendar.HOUR_OF_DAY)
@@ -63,16 +82,29 @@ class MainService : Service() , TextToSpeech.OnInitListener
         val second = calendar.get(Calendar.SECOND)
         val millis = calendar.get(Calendar.MILLISECOND)
 
-        // count of milliseconds to the next minute
         val millis_to_next_minute = 60000 - second * 1000 - millis
-        Log.v("WhiteRoseTimer", "[$hour:$minute:$second] Start oneshoot timer for $millis_to_next_minute")
+        log_time(millis_to_next_minute, hour, minute, second)
+        return millis_to_next_minute.toLong()
+    }
 
+    fun thread_func()
+    {
+        while(true) {
+            val millis_to_next_minute = time_to_next_minute()
+            Thread.sleep(millis_to_next_minute)
+            speak_time()
+        }
+    }
+
+    fun start_oneshoot_timer() 
+    {
+        val millis_to_next_minute = time_to_next_minute()
         timer.schedule(object : TimerTask() {
             override fun run() {
                 speak_time()
                 start_oneshoot_timer()
             }
-        }, millis_to_next_minute.toLong())
+        }, millis_to_next_minute)
     }
     
     fun number_to_text(number: Int): String {
@@ -93,8 +125,15 @@ class MainService : Service() , TextToSpeech.OnInitListener
     private val mBinder: IBinder = LocalBinder(this)
     override fun onBind(intent: Intent) : IBinder?
     {
-        Log.v("MyActivity", "onBind")
-        return null
+        //Log.v("WhiteRoseTimer", "onBind")
+        //return null
+        val extras = intent.extras
+        /*if (extras == null) Log.d("Service", "null") else {
+            Log.d("Service", "not null")
+            val from = extras["From"] as String?
+            if (from.equals("Main", ignoreCase = true)) StartListenLocation()
+        }*/
+        return mBinder
     }
 
     private fun speak(text: String)
@@ -171,21 +210,21 @@ class MainService : Service() , TextToSpeech.OnInitListener
 
     override fun onInit(status: Int) {
         if (status == TextToSpeech.SUCCESS) {
-            val result = tts.setLanguage(Locale.UK)
+            tts.setLanguage(Locale.UK)
         } else {
-            Log.e("error", "Failed to Initialize")
+            Log.e("WhiteRoseTimer", "Failed to Initialize")
         }
 
         for (voice in tts.voices)
         {
-            Log.v("MyActivity", voice.name)
+            Log.v("WhiteRoseTimer", voice.name)
             if (voice.name == "en-US-SMTf00")
                 tts.voice = voice
         }
     }
 
     override fun onStartCommand(intent:Intent , flags : Int, startId : Int) : Int {
-        Log.v("MyActivity", "onStartCommand")
+        Log.v("WhiteRoseTimer", "onStartCommand")
 
         val CHANNEL_ID = "10043"
 
@@ -216,7 +255,7 @@ class MainService : Service() , TextToSpeech.OnInitListener
     }
 
     override fun onDestroy() {
-        Log.v("MyActivity", "onDestroy")
+        Log.v("WhiteRoseTimer", "onDestroy")
         super.onDestroy()
     }
 }

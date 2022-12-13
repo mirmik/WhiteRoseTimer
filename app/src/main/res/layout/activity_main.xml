@@ -63,4 +63,15 @@
             android:text="Each 10m" />
     </RadioGroup>
 
+    <TextView
+        android:id="@+id/locallog"
+        android:layout_width="328dp"
+        android:layout_height="271dp"
+        android:scrollbars="vertical"
+        android:text="TextView"
+        app:layout_constraintBottom_toTopOf="@+id/seconds"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>
