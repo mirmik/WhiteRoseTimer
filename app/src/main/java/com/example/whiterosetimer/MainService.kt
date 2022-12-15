@@ -8,11 +8,147 @@ import android.os.IBinder
 import android.speech.tts.TextToSpeech
 import android.util.Log
 import java.util.*
-import java.util.concurrent.locks.ReentrantLock
-
-// syncronious queue
+import android.app.AlarmManager
+import android.content.BroadcastReceiver
+import  android.app.PendingIntent.FLAG_IMMUTABLE
 import java.util.concurrent.ConcurrentLinkedQueue
 
+private val numbers: Map <Int, String> = hashMapOf(
+    0 to "zero",
+    1 to "one",
+    2 to "two",
+    3 to "three",
+    4 to "four",
+    5 to "five",
+    6 to "six",
+    7 to "seven",
+    8 to "eight",
+    9 to "nine",
+    10 to "ten",
+    11 to "eleven",
+    12 to "twelve",
+    13 to "thirteen",
+    14 to "fourteen",
+    15 to "fifteen",
+    16 to "sixteen",
+    17 to "seventeen",
+    18 to "eighteen",
+    19 to "nineteen",
+    20 to "twenty",
+    30 to "thirty",
+    40 to "forty",
+    50 to "fifty")
+
+fun number_to_text(number: Int): String {
+    if (number in 0..20) {
+        return numbers[number].toString()
+    } else if (number in 21..59) {
+        if (number % 10 == 0)
+            return numbers[number].toString()
+        else
+            return numbers[number - number % 10] + " " + numbers[number % 10]
+    } else {
+        return "error"
+    }
+}
+
+var mainService : MainService? = null
+
+class AlarmReceiver : BroadcastReceiver(), TextToSpeech.OnInitListener
+{
+    private lateinit var tts : TextToSpeech
+    var alarmManager : AlarmManager? = null
+    var context : Context?= null
+    var inited : Boolean = false
+
+    override fun onInit(status: Int) {
+        if (status == TextToSpeech.SUCCESS) {
+            tts.setLanguage(Locale.UK)
+        } else {
+            Log.e("WhiteRoseTimer", "Failed to Initialize")
+        }
+
+        for (voice in tts.voices)
+        {
+            Log.v("WhiteRoseTimer", voice.name)
+            if (voice.name == "en-US-SMTf00")
+                tts.voice = voice
+        }
+
+        speak_time()
+    }
+
+    override fun onReceive(context: Context?, intent: Intent?)
+    {
+        this.context = context
+
+        if (!inited)
+        {
+            tts = TextToSpeech(context, this)
+            inited = true
+        }
+
+        // get context from intent
+        Log.v("WhiteRoseTimer", "AlarmReceiver.onReceive")
+        alarmManager = context?.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        start_exact_alarm_for_next_minute()
+    }
+
+    fun start_exact_alarm_for_next_minute()
+    {
+        val calendar = Calendar.getInstance()
+        val hour = calendar.get(Calendar.HOUR_OF_DAY)
+        val minute = calendar.get(Calendar.MINUTE)
+        val second = calendar.get(Calendar.SECOND)
+        val millis = calendar.get(Calendar.MILLISECOND)
+
+        val millis_to_next_minute = 60000 - second * 1000 - millis
+        log_time(millis_to_next_minute, hour, minute, second)
+        val intent = Intent(context, AlarmReceiver::class.java)
+        val pendingIntent = PendingIntent.getBroadcast(context, 0, intent, FLAG_IMMUTABLE )
+        alarmManager?.setExact(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + millis_to_next_minute, pendingIntent)
+
+    }
+
+    fun log_time(ms : Int, hour:Int, minute:Int, second:Int)
+    {
+        val msg = "[$hour:$minute:$second] Millis to next minute: $ms"
+        //logqueue.add(msg)
+        Log.v(
+            "WhiteRoseTimer",
+            msg
+        )
+
+    }
+
+    private fun speak(text: String)
+    {
+        tts.speak("k", TextToSpeech.QUEUE_ADD, null, null)
+        tts.speak(text, TextToSpeech.QUEUE_ADD, null, null)
+    }
+
+    private fun time_to_speak_hour(hour : Int, minute : Int) : Boolean
+    {
+        return true;
+    }
+
+    private fun time_to_speak_minute(hour : Int, minute : Int) : Boolean
+    {
+        return !time_to_speak_hour(hour, minute)
+    }
+
+    private fun speak_time()
+    {
+        val calendar = Calendar.getInstance()
+        val hour = calendar.get(Calendar.HOUR_OF_DAY)
+        val minute = calendar.get(Calendar.MINUTE)
+
+        //val checkboxS_state = findViewById<RadioButton>(R.id.radioButtonSpecial).isChecked
+        val time = number_to_text(minute) + " " + number_to_text(hour)
+            speak(time)
+            return
+    }
+}
 
 class MainService : Service() , TextToSpeech.OnInitListener
 {
@@ -55,12 +191,36 @@ class MainService : Service() , TextToSpeech.OnInitListener
     }
 
     override fun onCreate() {
+        mainService = this
         Log.v("WhiteRoseTimer", "onCreate")
         super.onCreate()
         tts = TextToSpeech(this, this)
         //start_oneshoot_timer()
-        val thread = Thread { thread_func() }
-        thread.start()
+        //val thread = Thread { thread_func() }
+        //thread.start()
+
+    
+        // start exact alarm
+        start_exact_alarm_for_next_minute()
+    }
+
+
+
+    fun start_exact_alarm_for_next_minute()
+    {
+        val calendar = Calendar.getInstance()
+        val hour = calendar.get(Calendar.HOUR_OF_DAY)
+        val minute = calendar.get(Calendar.MINUTE)
+        val second = calendar.get(Calendar.SECOND)
+        val millis = calendar.get(Calendar.MILLISECOND)
+
+        val millis_to_next_minute = 60000 - second * 1000 - millis
+        log_time(millis_to_next_minute, hour, minute, second)
+
+        val intent = Intent(this, AlarmReceiver::class.java)
+        val alarmManager : AlarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val pendingIntent = PendingIntent.getBroadcast(this, 0, intent, FLAG_IMMUTABLE )
+        alarmManager.setExact(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + millis_to_next_minute, pendingIntent)
     }
 
     fun log_time(ms : Int, hour:Int, minute:Int, second:Int)
