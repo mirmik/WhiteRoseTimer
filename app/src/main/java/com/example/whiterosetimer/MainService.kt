@@ -77,7 +77,7 @@ class AlarmReceiver : BroadcastReceiver()
 class MainService : Service() , TextToSpeech.OnInitListener
 {
     var mode : Int = 0
-    public     var logqueue = ConcurrentLinkedQueue<String>()
+    val logjournal = mutableListOf<String>()
     var tthis = this
 
     // receive messages from AlarmReceiver
@@ -89,11 +89,11 @@ class MainService : Service() , TextToSpeech.OnInitListener
     }
 
     private lateinit var tts : TextToSpeech
-    private val timer : Timer = Timer()
+    //private val timer : Timer = Timer()
 
-    fun get_queue() : ConcurrentLinkedQueue<String>
+    fun get_journal() : List<String>
     {
-        return logqueue
+        return logjournal
     }
 
     override fun onCreate() {
@@ -135,7 +135,7 @@ class MainService : Service() , TextToSpeech.OnInitListener
     fun log_time(ms : Int, hour:Int, minute:Int, second:Int)
     {
         val msg = "[$hour:$minute:$second] Millis to next minute: $ms"
-        logqueue.add(msg)
+        logjournal.add(msg)
         Log.v(
             "WhiteRoseTimer",
             msg
@@ -168,6 +168,13 @@ class MainService : Service() , TextToSpeech.OnInitListener
     {
         tts.speak("k", TextToSpeech.QUEUE_ADD, null, null)
         tts.speak(text, TextToSpeech.QUEUE_ADD, null, null)
+    }
+
+    fun pre_stop_service()
+    {
+        tts.stop()
+        tts.shutdown()
+        // receiver is unregistered in onDestroy
     }
 
     private fun time_to_speak_hour(hour : Int, minute : Int) : Boolean
@@ -232,6 +239,7 @@ class MainService : Service() , TextToSpeech.OnInitListener
     }
 
     override fun onInit(status: Int) {
+        Log.v("WhiteRoseTimer", "onInit")
         if (status == TextToSpeech.SUCCESS) {
             tts.setLanguage(Locale.UK)
         } else {
@@ -276,6 +284,13 @@ class MainService : Service() , TextToSpeech.OnInitListener
         startForeground(10042, notification)
 
         return START_STICKY
+    }
+
+    override fun onDestroy() {
+        Log.v("WhiteRoseTimer", "OnDestroy")
+        super.onDestroy()
+
+        unregisterReceiver(receiver)
     }
 
 }
