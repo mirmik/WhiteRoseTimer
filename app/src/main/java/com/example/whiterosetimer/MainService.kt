@@ -53,8 +53,6 @@ fun number_to_text(number: Int): String {
     }
 }
 
-var mainService : MainService? = null
-
 class AlarmReceiver : BroadcastReceiver()
 {
     var context : Context?= null
@@ -68,17 +66,18 @@ class AlarmReceiver : BroadcastReceiver()
 
     fun sendMessageToMainService(msg : String)
     {
-        val intent = Intent("com.example.whiterosetimer")
+        val intent = Intent("whiterosetimer.timeToSpeak")
         intent.putExtra("message", msg)
         context?.sendBroadcast(intent)
     }
 }
 
-class MainService : Service() , TextToSpeech.OnInitListener
+class WhiteRoseService : Service() , TextToSpeech.OnInitListener
 {
     var mode : Int = 0
     val logjournal = mutableListOf<String>()
     var tthis = this
+    var started = false
 
     // receive messages from AlarmReceiver
     private val receiver = object : BroadcastReceiver() {
@@ -97,16 +96,13 @@ class MainService : Service() , TextToSpeech.OnInitListener
     }
 
     override fun onCreate() {
-        mainService = this
         Log.v("WhiteRoseTimer", "onCreate")
         super.onCreate()
         tts = TextToSpeech(this, this)
 
         val filter = IntentFilter()
-        filter.addAction("com.example.whiterosetimer")
+        filter.addAction("whiterosetimer.timeToSpeak")
         registerReceiver(receiver, filter)
-
-        start_exact_alarm_for_next_minute()
     }
 
     fun do_action()
@@ -155,7 +151,7 @@ class MainService : Service() , TextToSpeech.OnInitListener
         return millis_to_next_minute.toLong()
     }
 
-    class LocalBinder(val service: MainService) : Binder() {}
+    class LocalBinder(val service: WhiteRoseService) : Binder() {}
 
     private val mBinder: IBinder = LocalBinder(this)
     override fun onBind(intent: Intent) : IBinder?
@@ -259,6 +255,9 @@ class MainService : Service() , TextToSpeech.OnInitListener
 
         val CHANNEL_ID = "10043"
 
+        if (started)
+            return START_STICKY
+
         val notificationManager : NotificationManager =
             getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
@@ -266,7 +265,7 @@ class MainService : Service() , TextToSpeech.OnInitListener
         notificationManager.createNotificationChannel(channel)
 
         val pendingIntent: PendingIntent =
-            Intent(this, MainService::class.java).let { notificationIntent ->
+            Intent(this, WhiteRoseService::class.java).let { notificationIntent ->
                 PendingIntent.getActivity(this, 0, notificationIntent,
                     PendingIntent.FLAG_IMMUTABLE)
             }
@@ -283,13 +282,16 @@ class MainService : Service() , TextToSpeech.OnInitListener
         // Notification ID cannot be 0.
         startForeground(10042, notification)
 
+        started = true
+        start_exact_alarm_for_next_minute()
+
         return START_STICKY
     }
 
     override fun onDestroy() {
         Log.v("WhiteRoseTimer", "OnDestroy")
         super.onDestroy()
-
+        started = false
         unregisterReceiver(receiver)
     }
 

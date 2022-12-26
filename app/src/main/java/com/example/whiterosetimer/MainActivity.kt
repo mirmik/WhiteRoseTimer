@@ -1,26 +1,30 @@
 package com.example.whiterosetimer
 
+import android.app.ActivityManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.os.Bundle
 import android.os.IBinder
-import android.text.method.MovementMethod
 import android.text.method.ScrollingMovementMethod
+import android.util.Log
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
-import com.example.whiterosetimer.MainService
-import com.example.whiterosetimer.MainService.LocalBinder
+import com.example.whiterosetimer.WhiteRoseService.LocalBinder
 import java.util.*
-import android.util.Log
 
 
 class MainActivity : AppCompatActivity() {
     private lateinit var timer2 : Timer
-    var mService: MainService? = null
+    var mService: WhiteRoseService? = null
     val mw = this
     var timer_update_locallog : Timer? = null
+
+    override fun onDestroy() {
+        unbindService(serviceConnection)
+        super.onDestroy()
+    }
 
     private val serviceConnection: ServiceConnection = object : ServiceConnection {
         override fun onServiceConnected(
@@ -30,27 +34,6 @@ class MainActivity : AppCompatActivity() {
             Log.v("WhiteRoseActivity", "onServiceConnected")
             val binder = service as LocalBinder
             mService = binder.service
-
-            // create timer
-            timer_update_locallog = Timer()
-            timer_update_locallog?.schedule(object : TimerTask() {
-                override fun run() {
-                    // start in UI
-
-                    if (mService == null) return
-
-                    val locallog = mService?.get_journal()
-
-                    runOnUiThread {
-                        val label = findViewById<TextView>(R.id.locallog)
-                        label.text = ""
-                        for (s in locallog!!)
-                            label.append(s + "\n")
-                    }
-
-
-                }
-            }, 0, 1000)
         }
 
         override fun onServiceDisconnected(arg0: ComponentName) {
@@ -64,7 +47,7 @@ class MainActivity : AppCompatActivity() {
         if (mService != null) {
             mService?.pre_stop_service()
             mService = null
-            val intent = Intent(this, MainService::class.java)
+            val intent = Intent(this, WhiteRoseService::class.java)
             stopService(intent)
             unbindService(serviceConnection)
         }
@@ -78,12 +61,18 @@ class MainActivity : AppCompatActivity() {
     fun start_service()
     {
         if (mService != null)
-            return
+            return    
 
         // start service
-        val intent = Intent(this, MainService::class.java)
+        val intent = Intent(this, WhiteRoseService::class.java)
         startForegroundService(intent)
         bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
+        
+
+        runOnUiThread {
+            val label = findViewById<TextView>(R.id.locallog)
+            label.text = "Service started"
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -106,6 +95,21 @@ class MainActivity : AppCompatActivity() {
             else {
                 start_service()
                 stop_button.text = "stop service"
+            }
+        }
+
+        val journal_button = findViewById<TextView>(R.id.btn_journal)
+        journal_button.setOnClickListener {
+            if (mService != null) {
+
+                val locallog = mService?.get_journal()
+
+                runOnUiThread {
+                    val label = findViewById<TextView>(R.id.locallog)
+                    label.text = ""
+                    for (s in locallog!!)
+                        label.append(s + "\n")
+                }
             }
         }
     }
