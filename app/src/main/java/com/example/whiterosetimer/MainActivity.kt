@@ -13,13 +13,13 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.example.whiterosetimer.WhiteRoseService.LocalBinder
 import java.util.*
+import android.graphics.Color
+import android.widget.SeekBar
 
 
 class MainActivity : AppCompatActivity() {
     private lateinit var timer2 : Timer
     var mService: WhiteRoseService? = null
-    val mw = this
-    var timer_update_locallog : Timer? = null
 
     override fun onDestroy() {
         unbindService(serviceConnection)
@@ -43,7 +43,6 @@ class MainActivity : AppCompatActivity() {
     fun stop_service() {
         // stop foreground service
         //return
-
         if (mService != null) {
             mService?.pre_stop_service()
             mService = null
@@ -67,11 +66,24 @@ class MainActivity : AppCompatActivity() {
         val intent = Intent(this, WhiteRoseService::class.java)
         startForegroundService(intent)
         bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
-        
 
         runOnUiThread {
             val label = findViewById<TextView>(R.id.locallog)
             label.text = "Service started"
+        }
+    }
+
+    fun button_set_start_state(b : Boolean) {
+        val stop_button = findViewById<TextView>(R.id.button_stop)
+        if (b) {
+            stop_button.text = "start service"
+            stop_button.setBackgroundColor(Color.GREEN)    
+        }
+        else
+        {
+            stop_button.text = "stop service"
+            stop_button.setBackgroundColor(Color.RED)
+
         }
     }
 
@@ -83,6 +95,7 @@ class MainActivity : AppCompatActivity() {
         label.movementMethod = ScrollingMovementMethod()
 
         start_service()
+        button_set_start_state(false)
         start_clock_timer()
 
         // get button
@@ -90,12 +103,18 @@ class MainActivity : AppCompatActivity() {
         stop_button.setOnClickListener {
             if (mService != null) {
                 stop_service()
-                stop_button.text = "start service"
+                button_set_start_state(true)
             }
             else {
                 start_service()
-                stop_button.text = "stop service"
+                button_set_start_state(false)
             }
+        }
+
+
+        val btn_test = findViewById<TextView>(R.id.btn_test)
+        btn_test.setOnClickListener {
+                mService?.speak_time()
         }
 
         val journal_button = findViewById<TextView>(R.id.btn_journal)
@@ -112,6 +131,21 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+
+        // get volume bar 
+        val volume_bar = findViewById<SeekBar>(R.id.volume_bar)
+        volume_bar.setMax(100)
+        volume_bar.setProgress(100)
+        volume_bar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {
+                if (mService != null) {
+                    mService?.set_volume(progress / 100.0f)
+                }
+            }
+
+            override fun onStartTrackingTouch(seekBar: SeekBar) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar) {}
+        })
     }
 
     fun start_clock_timer() {

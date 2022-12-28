@@ -11,8 +11,10 @@ import java.util.*
 import android.app.AlarmManager
 import android.content.BroadcastReceiver
 import  android.app.PendingIntent.FLAG_IMMUTABLE
-import java.util.concurrent.ConcurrentLinkedQueue
 import android.content.IntentFilter
+import android.os.Bundle
+import android.media.AudioManager
+
 
 private val numbers: Map <Int, String> = hashMapOf(
     0 to "zero",
@@ -53,31 +55,13 @@ fun number_to_text(number: Int): String {
     }
 }
 
-class AlarmReceiver : BroadcastReceiver()
-{
-    var context : Context?= null
-
-    override fun onReceive(context: Context?, intent: Intent?)
-    {
-        this.context = context;
-        Log.v("WhiteRoseTimer", "AlarmReceiver.onReceive")
-        sendMessageToMainService("Hello")
-    }
-
-    fun sendMessageToMainService(msg : String)
-    {
-        val intent = Intent("whiterosetimer.timeToSpeak")
-        intent.putExtra("message", msg)
-        context?.sendBroadcast(intent)
-    }
-}
-
 class WhiteRoseService : Service() , TextToSpeech.OnInitListener
 {
     var mode : Int = 0
     val logjournal = mutableListOf<String>()
     var tthis = this
     var started = false
+    var volume = 0.5f
 
     // receive messages from AlarmReceiver
     private val receiver = object : BroadcastReceiver() {
@@ -93,6 +77,12 @@ class WhiteRoseService : Service() , TextToSpeech.OnInitListener
     fun get_journal() : List<String>
     {
         return logjournal
+    }
+
+    fun set_volume(volume: Float)
+    {
+        Log.v("WhiteRoseTimer", "setVolume " + volume.toString())
+        this.volume = volume
     }
 
     override fun onCreate() {
@@ -122,7 +112,7 @@ class WhiteRoseService : Service() , TextToSpeech.OnInitListener
         val millis_to_next_minute = 60000 - second * 1000 - millis
         log_time(millis_to_next_minute, hour, minute, second)
 
-        val intent = Intent(this, AlarmReceiver::class.java)
+        val intent = Intent("whiterosetimer.timeToSpeak")
         val alarmManager : AlarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val pendingIntent = PendingIntent.getBroadcast(this, 0, intent, FLAG_IMMUTABLE )
         alarmManager.setExact(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + millis_to_next_minute, pendingIntent)
@@ -162,8 +152,13 @@ class WhiteRoseService : Service() , TextToSpeech.OnInitListener
 
     private fun speak(text: String)
     {
-        tts.speak("k", TextToSpeech.QUEUE_ADD, null, null)
-        tts.speak(text, TextToSpeech.QUEUE_ADD, null, null)
+        // option volume as Bundle
+        val params = Bundle()
+        params.putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, AudioManager.STREAM_NOTIFICATION)
+        params.putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, volume)
+
+        tts.speak("k", TextToSpeech.QUEUE_ADD, params, null)
+        tts.speak(text, TextToSpeech.QUEUE_ADD, params, null)
     }
 
     fun pre_stop_service()
@@ -207,7 +202,7 @@ class WhiteRoseService : Service() , TextToSpeech.OnInitListener
         return !time_to_speak_hour(hour, minute)
     }
 
-    private fun speak_time()
+    fun speak_time()
     {
         val calendar = Calendar.getInstance()
         val hour = calendar.get(Calendar.HOUR_OF_DAY)
